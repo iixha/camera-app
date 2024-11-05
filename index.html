@@ -6,32 +6,37 @@
   <title>Camera Capture</title>
   <style>
     video, canvas { width: 100%; height: auto; }
-    #capture { display: block; margin: 20px auto; padding: 10px 20px; }
+    #canvas { display: none; }
   </style>
 </head>
 <body>
   <video id="video" autoplay></video>
-  <button id="capture">Capture</button>
-  <canvas id="canvas" style="display: none;"></canvas>
+  <canvas id="canvas"></canvas>
   <script>
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
-    const captureButton = document.getElementById('capture');
 
     // Start the camera
     navigator.mediaDevices.getUserMedia({ video: true })
       .then(stream => video.srcObject = stream)
       .catch(err => console.error('Error accessing the camera:', err));
 
-    // Capture the image when the button is clicked
-    captureButton.addEventListener('click', () => {
+    // Function to capture the image
+    function captureImage() {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      // Convert the captured image to data URL and send it to Adalo
       const imageData = canvas.toDataURL('image/png');
+
+      // Send the captured image back to Adalo
       window.ReactNativeWebView.postMessage(imageData);
+    }
+
+    // Listen for messages from Adalo to trigger the capture
+    window.addEventListener('message', (event) => {
+      if (event.data === 'capture') {
+        captureImage();
+      }
     });
   </script>
 </body>
