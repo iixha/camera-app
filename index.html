@@ -1,112 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Capture</title>
-    <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-        }
-        video, canvas {
-            width: 100%;
-            max-width: 600px;
-            border-radius: 10px;
-            margin-bottom: 10px;
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 18px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Camera Capture</title>
+  <style>
+    video, canvas { width: 100%; height: auto; }
+    #capture { display: block; margin: 20px auto; padding: 10px 20px; }
+  </style>
 </head>
 <body>
-    <video id="video" autoplay playsinline></video>
-    <canvas id="canvas" style="display: none;"></canvas>
-    <button id="captureButton">Press and hold to record, tap to capture</button>
+  <video id="video" autoplay></video>
+  <button id="capture">Capture</button>
+  <canvas id="canvas" style="display: none;"></canvas>
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const captureButton = document.getElementById('capture');
 
-    <script>
-        let stream;
-        let mediaRecorder;
-        let chunks = [];
-        const videoElement = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const captureButton = document.getElementById('captureButton');
+    // Start the camera
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => video.srcObject = stream)
+      .catch(err => console.error('Error accessing the camera:', err));
 
-        // Start the camera stream
-        async function startCamera() {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                videoElement.srcObject = stream;
-            } catch (error) {
-                console.error("Error accessing the camera:", error);
-                alert("Camera access is required for this feature.");
-            }
-        }
+    // Capture the image when the button is clicked
+    captureButton.addEventListener('click', () => {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        startCamera();
-
-        // Capture photo
-        function capturePhoto() {
-            canvas.width = videoElement.videoWidth;
-            canvas.height = videoElement.videoHeight;
-            const context = canvas.getContext('2d');
-            context.drawImage(videoElement, 0, 0);
-            const imageDataURL = canvas.toDataURL('image/png');
-            // إرسال الصورة لـ Adalo عبر API أو Webhook
-            console.log("Photo captured:", imageDataURL);
-        }
-
-        // Start recording video
-        function startRecording() {
-            mediaRecorder = new MediaRecorder(stream);
-            mediaRecorder.start();
-            chunks = [];
-
-            mediaRecorder.ondataavailable = (event) => {
-                chunks.push(event.data);
-            };
-
-            mediaRecorder.onstop = () => {
-                const blob = new Blob(chunks, { type: 'video/mp4' });
-                const videoURL = URL.createObjectURL(blob);
-                // إرسال الفيديو لـ Adalo عبر API أو Webhook
-                console.log("Video recorded:", videoURL);
-            };
-        }
-
-        // Event handlers for button actions
-        let isLongPress = false;
-        let pressTimer;
-
-        captureButton.addEventListener('mousedown', () => {
-            pressTimer = setTimeout(() => {
-                isLongPress = true;
-                startRecording();
-            }, 500); // طول الضغطة الطويلة 0.5 ثانية
-        });
-
-        captureButton.addEventListener('mouseup', () => {
-            clearTimeout(pressTimer);
-            if (isLongPress) {
-                mediaRecorder.stop();
-                isLongPress = false;
-            } else {
-                capturePhoto();
-            }
-        });
-
-        captureButton.addEventListener('mouseleave', () => {
-            clearTimeout(pressTimer);
-        });
-    </script>
+      // Convert the captured image to data URL and send it to Adalo
+      const imageData = canvas.toDataURL('image/png');
+      window.ReactNativeWebView.postMessage(imageData);
+    });
+  </script>
 </body>
 </html>
